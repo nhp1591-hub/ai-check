@@ -2,18 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "ai_literacy_scorer.py",
+      "src": "api/*.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "ai_literacy_scorer.py"
+      "dest": "/api/ai_literacy_scorer.py"
     },
     {
       "src": "/(.*)",
-      "dest": "ai_literacy_scorer.py"
+      "dest": "/api/ai_literacy_scorer.py"
     }
   ],
   "env": {
@@ -21,7 +21,7 @@
     "PORT": "8001"
   },
   "functions": {
-    "ai_literacy_scorer.py": {
+    "api/ai_literacy_scorer.py": {
       "maxDuration": 60
     }
   }
