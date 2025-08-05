@@ -17,8 +17,12 @@ import urllib.parse
 import base64
 import io
 from datetime import datetime
+from dotenv import load_dotenv
 from scoring_logic import AIScoringLogic
 from openai_scoring_logic import OpenAIScoringLogic
+
+# .env 파일 로드
+load_dotenv()
 
 class AILiteracyScorer:
     def __init__(self):

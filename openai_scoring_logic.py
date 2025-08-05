@@ -6,6 +6,10 @@ import json
 import re
 from typing import Dict, List, Any
 import openai
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 class OpenAIScoringLogic:
     """OpenAI API를 활용한 AI 리터러시 채점 로직"""
@@ -13,12 +17,40 @@ class OpenAIScoringLogic:
     def __init__(self, api_key: str = None):
         """초기화"""
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
-        if self.api_key:
-            self.client = openai.OpenAI(api_key=self.api_key)
-            print("OpenAI API 키가 설정되었습니다.")
+        self.client = None
+        
+        # API 키 검증 및 설정
+        if self.api_key and self.api_key != 'your_openai_api_key_here':
+            # API 키 형식 검증
+            if not self.api_key.startswith('sk-'):
+                print("❌ OpenAI API 키 형식이 올바르지 않습니다. 'sk-'로 시작해야 합니다.")
+                print("⚠️ 기본 채점 로직을 사용합니다.")
+                self.client = None
+                return
+                
+            try:
+                self.client = openai.OpenAI(api_key=self.api_key)
+                # API 키 유효성 검증 (간단한 테스트)
+                test_response = self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": "Hello"}],
+                    max_tokens=5
+                )
+                print("✅ OpenAI API 키가 성공적으로 설정되었습니다.")
+            except openai.AuthenticationError:
+                print("❌ OpenAI API 인증 오류: API 키가 유효하지 않습니다.")
+                print("⚠️ 기본 채점 로직을 사용합니다.")
+                self.client = None
+            except openai.RateLimitError:
+                print("❌ OpenAI API 속도 제한 오류: 잠시 후 다시 시도해주세요.")
+                print("⚠️ 기본 채점 로직을 사용합니다.")
+                self.client = None
+            except Exception as e:
+                print(f"❌ OpenAI API 연결 오류: {e}")
+                print("⚠️ 기본 채점 로직을 사용합니다.")
+                self.client = None
         else:
-            self.client = None
-            print("경고: OPENAI_API_KEY가 설정되지 않았습니다. 기본 채점 로직을 사용합니다.")
+            print("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 기본 채점 로직을 사용합니다.")
     
     def score_with_openai(self, messages: List[Dict], task_description: str, task_name: str) -> Dict[str, Any]:
         """OpenAI API를 활용한 채점"""
@@ -50,8 +82,17 @@ class OpenAIScoringLogic:
             analysis_result = response.choices[0].message.content
             return self._parse_openai_response(analysis_result, messages, task_description)
             
+        except openai.AuthenticationError:
+            print("❌ OpenAI API 인증 오류: API 키가 유효하지 않습니다.")
+            return self._fallback_scoring(messages, task_description)
+        except openai.RateLimitError:
+            print("❌ OpenAI API 속도 제한 오류: 잠시 후 다시 시도해주세요.")
+            return self._fallback_scoring(messages, task_description)
+        except openai.APIError as e:
+            print(f"❌ OpenAI API 오류: {e}")
+            return self._fallback_scoring(messages, task_description)
         except Exception as e:
-            print(f"OpenAI API 오류: {e}")
+            print(f"❌ 예상치 못한 오류: {e}")
             return self._fallback_scoring(messages, task_description)
     
     def _create_analysis_prompt(self, messages: List[Dict], task_description: str, task_name: str) -> str:
@@ -144,19 +185,43 @@ class OpenAIScoringLogic:
                 'improvements': ['대화 내용 확인 필요']
             }
         
-        # 간단한 규칙 기반 채점
+        # 개선된 규칙 기반 채점
         total_length = sum(len(msg['content']) for msg in messages)
         user_messages = [msg for msg in messages if msg['role'] == 'user']
         assistant_messages = [msg for msg in messages if msg['role'] == 'assistant']
         
-        # 기본 점수 계산
-        creativity = min(20, len(user_messages) * 5)
-        practicality = min(25, len(assistant_messages) * 5)
-        ai_utilization = min(25, total_length // 100)
-        completeness = min(20, len(messages) * 2)
-        innovation = min(10, len(set([msg['content'][:50] for msg in messages])))
+        # 대화 품질 분석
+        avg_message_length = total_length / len(messages) if messages else 0
+        interaction_count = len(messages)
+        user_assistant_ratio = len(user_messages) / max(len(assistant_messages), 1)
+        
+        # 점수 계산 (개선된 알고리즘)
+        creativity = min(20, len(user_messages) * 3 + min(10, avg_message_length // 10))
+        practicality = min(25, len(assistant_messages) * 4 + min(10, total_length // 200))
+        ai_utilization = min(25, interaction_count * 3 + min(10, total_length // 150))
+        completeness = min(20, interaction_count * 2 + min(10, len(set([msg['content'][:30] for msg in messages]))))
+        innovation = min(10, len(set([msg['content'][:50] for msg in messages])) + min(5, user_assistant_ratio * 2))
         
         total_score = creativity + practicality + ai_utilization + completeness + innovation
+        
+        # 피드백 생성
+        feedback = "기본 채점 로직으로 평가되었습니다. "
+        strengths = []
+        improvements = []
+        
+        if total_score >= 70:
+            feedback += "전반적으로 양호한 AI 활용 능력을 보여줍니다."
+            strengths.append("적절한 대화 상호작용")
+            if creativity > 15:
+                strengths.append("창의적인 접근")
+        elif total_score >= 50:
+            feedback += "기본적인 AI 활용 능력을 보여줍니다."
+            strengths.append("대화 내용 분석 가능")
+            improvements.append("더 구체적인 프롬프트 작성 필요")
+        else:
+            feedback += "AI 활용 능력 향상이 필요합니다."
+            improvements.append("대화 내용 확장 필요")
+            improvements.append("구체적인 과제 해결 방안 제시 필요")
         
         return {
             'total_score': total_score,
@@ -168,9 +233,9 @@ class OpenAIScoringLogic:
                 'completeness': completeness,
                 'innovation': innovation
             },
-            'feedback': '기본 채점 로직으로 평가되었습니다. 더 정확한 평가를 위해 OpenAI API 키를 설정해주세요.',
-            'strengths': ['대화 내용 분석 완료'],
-            'improvements': ['OpenAI API 연동 필요']
+            'feedback': feedback,
+            'strengths': strengths,
+            'improvements': improvements
         }
     
     def _determine_grade(self, total_score: int) -> str:
