@@ -8,11 +8,21 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "ai_literacy_scorer.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "ai_literacy_scorer.py"
     }
   ],
   "env": {
-    "PYTHONPATH": "."
+    "PYTHONPATH": ".",
+    "PORT": "8001"
+  },
+  "functions": {
+    "ai_literacy_scorer.py": {
+      "maxDuration": 60
+    }
   }
 } 

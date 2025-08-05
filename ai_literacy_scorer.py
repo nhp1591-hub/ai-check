@@ -732,5 +732,55 @@ def main():
     except Exception as e:
         print(f"서버 오류: {e}")
 
+# Vercel 서버리스 함수 핸들러
+def handler(request, context):
+    """Vercel 서버리스 함수 핸들러"""
+    from http.server import HTTPServer
+    from urllib.parse import urlparse, parse_qs
+    
+    # 요청 정보 파싱
+    method = request.get('method', 'GET')
+    path = request.get('path', '/')
+    headers = request.get('headers', {})
+    body = request.get('body', '')
+    
+    # HTTP 서버 시뮬레이션
+    class MockRequest:
+        def __init__(self, method, path, headers, body):
+            self.method = method
+            self.path = path
+            self.headers = headers
+            self.body = body
+    
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.headers = {}
+            self.body = ''
+        
+        def set_status(self, code):
+            self.status_code = code
+        
+        def set_header(self, key, value):
+            self.headers[key] = value
+        
+        def set_body(self, body):
+            self.body = body
+    
+    # 핸들러 실행
+    handler = AILiteracyRequestHandler(MockRequest(method, path, headers, body), ('localhost', 8001), None)
+    response = MockResponse()
+    
+    if method == 'GET':
+        handler.do_GET()
+    elif method == 'POST':
+        handler.do_POST()
+    
+    return {
+        'statusCode': response.status_code,
+        'headers': response.headers,
+        'body': response.body
+    }
+
 if __name__ == '__main__':
     main() 
