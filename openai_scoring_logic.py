@@ -12,7 +12,7 @@ class OpenAIScoringLogic:
     
     def __init__(self, api_key: str = None):
         """초기화"""
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         if self.api_key:
             self.client = openai.OpenAI(api_key=self.api_key)
             print("OpenAI API 키가 설정되었습니다.")
