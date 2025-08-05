@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "ai_literacy_scorer.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "ai_literacy_scorer.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
+} 
