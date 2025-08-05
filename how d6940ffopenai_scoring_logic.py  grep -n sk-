@@ -1,0 +1,19 @@
+[33mcommit d6940ff90aaa1d99ce44b439fbeb81152a5ffcd1[m
+Author: nhp1591-hub <nhp1591@gmail.com>
+Date:   Tue Aug 5 23:59:13 2025 +0900
+
+    Initial commit - AI Literacy Challenge Judging System
+
+.gitignore
+LICENSE
+README.md
+ai-literacy-project.zip
+ai_literacy_scorer.py
+favicon.ico
+openai_scoring_logic.py
+requirements.txt
+runtime.txt
+scoring_logic.py
+script.js
+styles.css
+vercel.json

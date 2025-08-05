@@ -55,4 +55,4 @@ chromedriver
 node_modules/
 
 # Vercel
-.vercel 
+.vercel .env
